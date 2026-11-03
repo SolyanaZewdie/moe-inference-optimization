@@ -15,12 +15,10 @@ def test_create_routing_trace():
 
     expected = [
         "layer_0_expert_0",
-        "layer_0_expert_2",
         "layer_0_expert_1",
         "layer_0_expert_2",
-        "layer_1_expert_1",
-        "layer_1_expert_3",
         "layer_1_expert_0",
+        "layer_1_expert_1",
         "layer_1_expert_3"
     ]
 
@@ -57,3 +55,32 @@ def test_empty_routing_trace():
     trace = create_routing_trace([])
 
     assert trace == []
+
+
+def test_routing_trace_removes_duplicate_expert_requests():
+    decisions = [
+        [[2, 0], [1, 2], [0, 1]]
+    ]
+
+    trace = create_routing_trace(decisions)
+
+    assert trace == [
+        "layer_0_expert_0",
+        "layer_0_expert_1",
+        "layer_0_expert_2"
+    ]
+
+
+def test_routing_trace_uses_ascending_expert_order():
+    decisions = [
+        [[3, 1], [2, 3], [0, 1]]
+    ]
+
+    trace = create_routing_trace(decisions)
+
+    assert trace == [
+        "layer_0_expert_0",
+        "layer_0_expert_1",
+        "layer_0_expert_2",
+        "layer_0_expert_3"
+    ]

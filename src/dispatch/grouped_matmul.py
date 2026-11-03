@@ -6,7 +6,8 @@ def grouped_expert_forward(
     selected_experts,
     selected_weights,
     experts,
-    capacity_factor=None
+    capacity_factor=None,
+    expert_loader=None
 ):
     """
     Process tokens in groups based on their selected experts.
@@ -75,8 +76,7 @@ def grouped_expert_forward(
     dropped_assignments = 0
 
     # Process one expert at a time.
-    for expert_index, expert in enumerate(experts):
-
+    for expert_index in range(num_experts):
         # Find all assignments to this expert.
         token_indices, top_k_positions = np.where(
             selected_experts == expert_index
@@ -85,6 +85,16 @@ def grouped_expert_forward(
         # Skip experts with no assignments.
         if len(token_indices) == 0:
             continue
+                # Load the expert only when it is needed.
+        expert = experts[expert_index]
+
+        if expert is None:
+            if expert_loader is None:
+                raise ValueError(
+                    "An expert loader is required for missing experts"
+                )
+
+            expert = expert_loader(expert_index)
 
         # Apply capacity limit.
         if capacity is not None:

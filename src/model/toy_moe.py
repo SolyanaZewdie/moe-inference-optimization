@@ -195,30 +195,19 @@ class ToyMoE:
     def get_experts_for_computation(
         self, layer_index, layer, selected_experts
     ):
-        if self.expert_cache is None:
-            return layer["experts"]
+            if self.expert_cache is None:
+                return layer["experts"]
 
-        selected_indices = np.unique(selected_experts)
+        # Experts will be loaded individually during execution.
+            return [None] * self.config.num_experts
+    def load_expert_for_computation(self, layer_index, expert_index):
+        expert_id = f"layer_{layer_index}_expert_{expert_index}"
 
-        protected = {
-            f"layer_{layer_index}_expert_{int(index)}"
-            for index in selected_indices
-        }
-
-        experts = [None] * self.config.num_experts
-
-        for index in selected_indices:
-            index = int(index)
-            expert_id = f"layer_{layer_index}_expert_{index}"
-
-            experts[index] = self.expert_cache.get(
-                expert_id,
-                self.load_expert_from_mmap,
-                protected_experts=protected
-            )
-
-        return experts
-
+        return self.expert_cache.get(
+            expert_id,
+            self.load_expert_from_mmap,
+            protected_experts={expert_id}
+        )
     # Transformer operations
 
     def rms_norm(self, x, epsilon=1e-6):
@@ -310,12 +299,22 @@ class ToyMoE:
                 layer_index, layer, selected_experts
             )
 
+            expert_loader = None
+
+            if self.expert_cache is not None:
+                expert_loader = lambda expert_index: (
+                    self.load_expert_for_computation(
+                        layer_index, expert_index
+                    )
+                )
+
             expert_output, dropped_assignments = grouped_expert_forward(
                 flattened_x,
                 selected_experts,
                 selected_weights,
                 experts,
-                capacity_factor=self.config.capacity_factor
+                capacity_factor=self.config.capacity_factor,
+                expert_loader=expert_loader
             )
 
             expert_output = expert_output.reshape(

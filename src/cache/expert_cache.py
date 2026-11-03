@@ -50,11 +50,27 @@ class ExpertCache:
             raise MemoryError("Expert is larger than the entire cache")
 
         # Evict until enough space is available.
+                # Evict until enough space is available.
         while self.current_memory_bytes + expert_size > self.memory_limit_bytes:
+
+            available_experts = (
+                set(self.cached_experts) - protected_experts
+            )
+
+            if not available_experts:
+                raise RuntimeError(
+    "Not enough cache space: all cached experts are protected"
+)
+
             victim = self.policy.choose_victim(
                 set(self.cached_experts),
                 protected_experts
             )
+
+            if victim not in available_experts:
+                raise RuntimeError(
+                    "Cache policy selected an invalid eviction candidate"
+                )
 
             self.remove(victim)
 
